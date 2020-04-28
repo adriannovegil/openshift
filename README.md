@@ -15,6 +15,7 @@
 - [Routing](#routing)
 - [Specifying Images to Use](#specifying-images-to-use)
 - [Accessing the OpenShift Registry Directly](#accessing-the-openshift-registry-directly)
+- [Common Errors](#common-errors)
 
 ## Prerequisites
 
@@ -299,3 +300,48 @@ To push arbitrary images from your local Docker daemon to this registry, you wil
 
    After the image is pushed to the local registry, an ImageStream named `nginx` will be
    created in the `myproject` namespace.
+
+## Common Errors
+
+Common error during the startup using the `$oc cluster` command
+
+### Can not access github from builder
+
+In Ubuntu the problem is, starting from version18.04, when Ubuntu changed to use `systemd-resolved` to generate `/etc/resolv.conf`. By default it uses a local DNS cache `127.0.0.53`.
+
+That will not work inside a container.
+
+Openshift kube-dns also uses host `/etc/resolv.conf` as base line to generate dns config, as the result the external DNS query from Openshift pod won’t be able to solve.
+
+change the `resolv.conf` symlink to point to `/run/systemd/resolve/resolv.conf`, which lists the real DNS servers:
+
+```
+$ sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+```
+
+check updated file, dns server should point to your real dns server not local cache
+
+```
+cat /etc/resolv.conf
+```
+
+### Can not access github from builder in Vagrant
+
+Try with:
+
+```
+config.vm.provider "virtualbox" do |vb|
+    vb.customize ["modifyvm", :id, "--ioapic", "on"]
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+end
+```
+
+## References
+
+ * https://github.com/openshift/origin/blob/v4.0.0-alpha.0/docs/cluster_up_down.md
+ * https://computingforgeeks.com/how-to-setup-openshift-origin-on-ubuntu/
+ * https://github.com/openshift/origin/issues/8446
+ * https://medium.com/@yiwugan/install-openshift-okd-3-11-on-linux-ubuntu-18-04-mint-19-1-7fa74eccf86a
+ * https://github.com/keycloak/openshift-integration/blob/a077b92429820e8259808de99a734b893c022a75/configure-openshift
+ * https://github.com/juniorgasparotto/Scripts/blob/b5ec080b08b4dc5d77981e376967fc05235dc44d/openshift/install/oc-cluster-up/install-ubuntu
+ * https://github.com/Cloudxtreme/automate/blob/6d8c2d883d21ff2ff3547b6c63e66ca0cd849869/020_docker.sh
